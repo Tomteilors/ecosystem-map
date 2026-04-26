@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CryptoPilot Ecosystem Map</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#07071a;
+  color:#e0e0ff;
+  font-family:'SF Mono','Fira Code','Courier New',monospace;
+  overflow:hidden;
+  height:100vh; width:100vw;
+}
+#header {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:10px 16px;
+  background:rgba(7,7,26,0.92);
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex; align-items:center; justify-content:space-between;
+  backdrop-filter:blur(12px);
+  height:48px;
+}
+#header h1 {
+  font-size:14px; font-weight:700; letter-spacing:0.04em;
+  background:linear-gradient(90deg,#00ff88,#00aaff,#aa44ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.controls { display:flex; gap:6px; }
+.btn {
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  color:#9090c0; padding:5px 10px;
+  border-radius:6px; font-size:11px; cursor:pointer;
+  transition:all 0.2s; font-family:inherit;
+}
+.btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
+svg { width:100%; height:100%; }
+#chart-wrap { width:100vw; height:100vh; padding-top:48px; }
+
+.link {
+  fill:none; stroke-width:1.5;
+  opacity:0.2; transition:opacity 0.3s, stroke-width 0.3s;
+}
+.link.lit { opacity:0.9 !important; stroke-width:3 !important; }
+
+.node { cursor:pointer; }
+.node rect {
+  rx:7; ry:7;
+  stroke-width:1.2;
+  transition:all 0.25s;
+}
+.node:hover rect { stroke-width:2.2; }
+.node.selected rect { stroke-width:2.5; }
+.node.dimmed { opacity:0.15; }
+.node-label {
+  font-size:10.5px; fill:#dde; pointer-events:none;
+  font-family:'SF Mono','Fira Code','Courier New',monospace;
+}
+.node-sub {
+  font-size:8.5px; fill:rgba(200,200,255,0.38); pointer-events:none;
+  font-family:'SF Mono','Fira Code','Courier New',monospace;
+}
+.exp-circle { fill:rgba(255,255,255,0.1); stroke:rgba(255,255,255,0.2); stroke-width:1; }
+.exp-text { font-size:10px; fill:rgba(255,255,255,0.55); pointer-events:none; font-family:inherit; }
+
+#tt {
+  position:fixed;
+  background:rgba(8,8,30,0.97);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px; padding:12px 15px;
+  font-size:12px; max-width:270px;
+  pointer-events:none; z-index:300;
+  display:none;
+  backdrop-filter:blur(16px);
+  box-shadow:0 8px 40px rgba(0,0,0,0.6);
+  line-height:1.5;
+}
+.tt-name { font-weight:700; font-size:13px; margin-bottom:3px; color:#fff; }
+.tt-badge {
+  display:inline-block; font-size:9px; padding:1px 6px;
+  border-radius:4px; margin-bottom:8px;
+  text-transform:uppercase; letter-spacing:0.08em;
+}
+.tt-desc { color:#b0b0d0; font-size:11px; }
+.tt-server { margin-top:8px; font-size:10px; color:#556; }
+
+#legend {
+  position:fixed; bottom:14px; left:14px; z-index:100;
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.leg { display:flex; align-items:center; gap:5px; font-size:10px; color:rgba(255,255,255,0.38); }
+.leg-dot { width:8px; height:8px; border-radius:2px; }
+#hint { position:fixed; bottom:14px; right:14px; z-index:100; font-size:9px; color:rgba(255,255,255,0.18); text-align:right; line-height:1.7; }
+
+#pathbar {
+  position:fixed; top:48px; left:0; right:0; z-index:99;
+  padding:5px 16px; font-size:10px; color:rgba(255,255,255,0.4);
+  background:rgba(7,7,26,0.85); backdrop-filter:blur(8px);
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  min-height:26px; display:flex; align-items:center;
+  opacity:0; transition:opacity 0.3s;
+}
+#pathbar.vis { opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>⬡ CryptoPilot Ecosystem</h1>
+  <div class="controls">
+    <button class="btn" onclick="resetView()">↺ Reset</button>
+    <button class="btn" onclick="expandAll()">⊞ Expand</button>
+    <button class="btn" onclick="collapseAll()">⊟ Pack</button>
+  </div>
+</div>
+
+<div id="pathbar"></div>
+<div id="chart-wrap"><svg id="chart"></svg></div>
+
+<div id="tt">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-badge" id="tt-badge"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+  <div class="tt-server" id="tt-server"></div>
+</div>
+
+<div id="legend">
+  <div class="leg"><div class="leg-dot" style="background:#00ff88"></div>Trading</div>
+  <div class="leg"><div class="leg-dot" style="background:#00aaff"></div>Products</div>
+  <div class="leg"><div class="leg-dot" style="background:#aa44ff"></div>Content</div>
+  <div class="leg"><div class="leg-dot" style="background:#ff8844"></div>Community</div>
+  <div class="leg"><div class="leg-dot" style="background:#ffd700"></div>Brain</div>
+</div>
+
+<div id="hint">Click — select path<br>2× tap — expand/collapse<br>Pinch / scroll — zoom</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// ═══════════════ DATA ═══════════════
+const RAW = {
+  id:"root", name:"CryptoPilot", type:"root", desc:"Полная экосистема продуктов и автоматизаций",
+  children:[
+  {
+    id:"trading", name:"Trading & Analytics", type:"group", group:"trading",
+    server:"hlbot-server (89.167.12.29)",
+    desc:"Боты для трейдинга и аналитики. Работают 24/7 на сервере.",
+    children:[
+      {
+        id:"hlbot", name:"HL Bot", type:"project", group:"trading",
+        desc:"Главный публичный TG бот. Данные Hyperliquid + Binance. ~4300 строк.",
+        server:"hlbot-server → /home/bot/hl_bot/ → hlbot.service",
+        children:[
+          { id:"hlbot-arch", name:"bot.py (4300 lines)", type:"file", group:"trading", desc:"Весь бот в одном файле. i18n.py — переводы 6 языков: EN, RU, UK, SV, PL, AR." },
+          { id:"hlbot-db2", name:"db.json", type:"file", group:"trading", desc:"База данных в JSON. Хранит состояние пользователей и настройки." },
+          { id:"hlbot-loops", name:"Background Loops", type:"module", group:"trading", desc:"3 фоновых процесса работают параллельно",
+            children:[
+              { id:"hlbot-watcher", name:"watcher_loop", type:"process", group:"trading", desc:"Следит за позициями Hyperliquid и ценами. Интервал: POLL_SECONDS." },
+              { id:"hlbot-protect", name:"protect_loop", type:"process", group:"trading", desc:"Stop Hunt алерты. Каждые 5 секунд. One-shot per-ticker." },
+              { id:"hlbot-squeeze", name:"squeeze_loop", type:"process", group:"trading", desc:"Детектирует short/long squeeze по score-модели. Каждые 30 секунд." }
+            ]
+          },
+          { id:"hlbot-feats", name:"Features", type:"module", group:"trading", desc:"Основные функции бота",
+            children:[
+              { id:"hlbot-hl", name:"Hyperliquid Positions", type:"feature", group:"trading", desc:"Позиции, funding rate, OI в реальном времени." },
+              { id:"hlbot-squeeze2", name:"Squeeze Alerts", type:"feature", group:"trading", desc:"Score-based алерты. Cooldown 10 минут." },
+              { id:"hlbot-stophunt", name:"Stop Hunt Alerts", type:"feature", group:"trading", desc:"One-shot алерт per-ticker. Не повторяется до сброса." },
+              { id:"hlbot-cme", name:"CME Gap Tracker", type:"feature", group:"trading", desc:"Пт 16:00 CT → Вс 17:00 CT. 12 недель истории backfill." },
+              { id:"hlbot-liqmap", name:"Liquidation Maps", type:"feature", group:"trading", desc:"PIL → PNG генерация карт ликвидаций." }
+            ]
+          }
+        ]
+      },
+      {
+        id:"screener", name:"Screener Bot", type:"project", group:"trading",
+        desc:"Автономный скринер 24/7. Мониторит биржи → публикует сигналы в TG канал.",
+        server:"hlbot-server → /home/bot/screener_bot/ → screener.service",
+        children:[
+          { id:"scr-vol", name:"Volume Spike", type:"process", group:"trading", desc:"Binance, Bybit, OKX, Hyperliquid — всплески объёма." },
+          { id:"scr-liq", name:"Liquidations", type:"process", group:"trading", desc:"Мониторинг ликвидаций по биржам." },
+          { id:"scr-whale", name:"Whale On-chain", type:"process", group:"trading", desc:"ETH + BSC через Etherscan API. Крупные переводы китов." },
+          { id:"scr-oi", name:"OI Alerts", type:"process", group:"trading", desc:"Аномалии Open Interest." },
+          { id:"scr-cfg", name:"config.json + state.json", type:"file", group:"trading", desc:"Символы, пороги, cooldowns. state.json хранит текущее состояние." },
+          { id:"scr-out", name:"→ Screener TG Channel", type:"output", group:"trading", desc:"Публикует сигналы в приватный канал -1003281437652." }
+        ]
+      },
+      {
+        id:"pumphunter", name:"Pump Hunter", type:"project", group:"trading",
+        desc:"Short squeeze & pump/dump детектор. Платный доступ — приватное сообщество.",
+        server:"hlbot-server → /home/bot/pump_hunter/ → pump_hunter.service",
+        children:[
+          { id:"ph-tasks", name:"9 Async Tasks", type:"module", group:"trading", desc:"Все задачи работают параллельно через asyncio",
+            children:[
+              { id:"ph-ws", name:"bybit_ws", type:"process", group:"trading", desc:"WebSocket Bybit: klines, trades, OI в реальном времени." },
+              { id:"ph-sweep", name:"detector_sweep", type:"process", group:"trading", desc:"Sweep всех символов каждую 1 секунду." },
+              { id:"ph-events", name:"detector_events", type:"process", group:"trading", desc:"Обработка сигналов из очереди событий." },
+              { id:"ph-scanner", name:"scanner", type:"process", group:"trading", desc:"Топ-5 кандидатов из 500+ тикеров. Каждые 30 минут." },
+              { id:"ph-whale", name:"whale_research", type:"process", group:"trading", desc:"Whale Cheat Sheet обновляется раз в 24 часа." },
+              { id:"ph-reversal", name:"reversal", type:"process", group:"trading", desc:"REVERSAL_SHORT + DEATH_OF_PUMP. Каждые 5 минут." },
+              { id:"ph-bridge", name:"screener_bridge", type:"process", group:"trading", desc:"Читает candidates.json от Screener Bot." },
+              { id:"ph-snap", name:"snapshot", type:"process", group:"trading", desc:"Снапшот StateStore каждые N секунд." },
+              { id:"ph-tg2", name:"tg_polling", type:"process", group:"trading", desc:"Telegram polling для команд пользователей." }
+            ]
+          },
+          { id:"ph-algos", name:"Алгоритмы", type:"module", group:"trading", desc:"Математические модели детекции паттернов",
+            children:[
+              { id:"ph-sme", name:"SME (Squeeze Math Engine)", type:"algo", group:"trading", desc:"Slippage Factor = short_OI / ask_vol_5pct. Delta Neutral = математический потолок цены. LOW / MID / HIGH / EXTREME." },
+              { id:"ph-wcs", name:"Whale Cheat Sheet", type:"algo", group:"trading", desc:"Score 0–100: Funding(35) + Liquidity Gap(35) + Low Float(20) + Social Silence(10)." },
+              { id:"ph-rev", name:"REVERSAL_SHORT", type:"algo", group:"trading", desc:"Цена ≥ Delta Neutral (±2%) + OI drop >3% за 6 снапшотов + bearish div 5m. Cooldown 30 мин." },
+              { id:"ph-dop", name:"DEATH_OF_PUMP", type:"algo", group:"trading", desc:"Цена ≥ Delta Neutral (±8%) + OI drop ≥20% от пика + Funding стабилизировался. Cooldown 60 мин." }
+            ]
+          },
+          { id:"ph-out", name:"→ Приватный TG чат", type:"output", group:"trading", desc:"t.me/+HBTcRsaviyVjOTRk — платное сообщество." }
+        ]
+      }
+    ]
+  },
+  {
+    id:"products", name:"Web Products", type:"group", group:"products",
+    desc:"SaaS и Web3 продукты",
+    children:[
+      {
+        id:"docpilot", name:"DocPilot", type:"project", group:"products",
+        desc:"AI анализ официальных документов. SaaS. 8 языков. Decision Engine с профилем пользователя.",
+        server:"89.167.12.29 → getdocpilot.app",
+        children:[
+          { id:"dp-front", name:"Frontend (SPA)", type:"module", group:"products", desc:"index.html + JSX компоненты",
+            children:[
+              { id:"dp-auth", name:"screen-auth.jsx", type:"file", group:"products", desc:"Регистрация/вход. Блок disposable email доменов. Email autocomplete." },
+              { id:"dp-dash", name:"screen-dashboard.jsx", type:"file", group:"products", desc:"Личный кабинет. История анализов. Баннер 'Заполни профиль'." },
+              { id:"dp-profile", name:"screen-profile.jsx", type:"file", group:"products", desc:"4-step wizard: страна → гражданство → иммиграционный статус → работа. localStorage сохраняет прогресс при перезагрузке." },
+              { id:"dp-i18n", name:"translations.js (8 яз)", type:"file", group:"products", desc:"EN, RU, UK, PL, DE, FR, SV, AR. Версионируется ?v=N для кеш-баста." }
+            ]
+          },
+          { id:"dp-back", name:"Backend (FastAPI)", type:"module", group:"products", desc:"Python API + AI + база данных",
+            children:[
+              { id:"dp-engine", name:"decision_engine.py", type:"process", group:"products", desc:"Тип документа → сценарный промпт Claude. USER CONTEXT из профиля. Кеш знаний по (jurisdiction/doc_type/topic) с TTL." },
+              { id:"dp-db2", name:"database.py (SQLite)", type:"process", group:"products", desc:"Таблицы: users, analyses, knowledge_cache, user_patterns." },
+              { id:"dp-api2", name:"main.py (API endpoints)", type:"process", group:"products", desc:"Auth, analyze, profile, history. Валидация disposable email." }
+            ]
+          },
+          { id:"dp-flow", name:"Поток анализа", type:"module", group:"products", desc:"Путь от документа до результата",
+            children:[
+              { id:"dp-up", name:"Upload (PDF/фото/текст)", type:"step", group:"products", desc:"Пользователь загружает документ любым способом." },
+              { id:"dp-det", name:"Detect doc type", type:"step", group:"products", desc:"decision_engine определяет тип: work_contract / tax_notice / eviction_notice / ..." },
+              { id:"dp-ctx", name:"Build prompt + USER CONTEXT", type:"step", group:"products", desc:"Добавляет профиль: страна, гражданство, статус, работа." },
+              { id:"dp-ai", name:"Claude API", type:"step", group:"products", desc:"Claude анализирует документ с учётом пользовательского контекста." },
+              { id:"dp-res", name:"Результат на языке польз.", type:"step", group:"products", desc:"Объяснение документа на выбранном языке пользователя." }
+            ]
+          },
+          { id:"dp-svc", name:"docpilot.service", type:"service", group:"products", desc:"systemd на 89.167.12.29. Venv: /home/bot/docpilot-venv/. Admin: /admin.html" }
+        ]
+      },
+      {
+        id:"cryfin", name:"Cryfin.io", type:"project", group:"products",
+        desc:"Swap/Bridge агрегатор через LI.FI. Геймификация за активность.",
+        server:"hlbot-server → cryfin.io",
+        children:[
+          { id:"cr-front", name:"Frontend (Next.js 14)", type:"file", group:"products", desc:"Static export → nginx. WalletConnect для подключения кошельков." },
+          { id:"cr-back", name:"Backend (FastAPI :8002)", type:"process", group:"products", desc:"Gamification API. gamification.db (SQLite)." },
+          { id:"cr-lifi", name:"LI.FI Integration", type:"process", group:"products", desc:"Swap + bridge. Integrator: Cryfin. Fee: 0.3%." },
+          { id:"cr-gamif", name:"Геймификация", type:"process", group:"products", desc:"Баллы за активность пользователей в SQLite." },
+          { id:"cr-twitter", name:"Twitter Monitor", type:"process", group:"products", desc:"systemd timer каждые 30с → авто-посты о продукте." },
+          { id:"cr-svc", name:"cryfin-api.service", type:"service", group:"products", desc:"nginx + certbot SSL. deploy.sh: build Next.js → rsync → restart." }
+        ]
+      },
+      {
+        id:"cpsite", name:"CryptoPilot.se", type:"project", group:"products",
+        desc:"Основной WP сайт бренда. HostIQ shared hosting.",
+        server:"HostIQ → 31.131.26.121:21098 (user: edwardso)",
+        children:[
+          { id:"cp-wp", name:"WordPress", type:"process", group:"products", desc:"Тема: ~/Мои проекты/cryptopilot/website/. SSH или SFTP редактирование." },
+          { id:"cp-ssh", name:"SSH: hostiq-wp", type:"config", group:"products", desc:"~/.ssh/id_rsa_hostiq. Порт 21098." }
+        ]
+      },
+      {
+        id:"edwardson", name:"Edwardson", type:"project", group:"products",
+        desc:"Статический личный сайт. HostIQ, тот же сервер что CryptoPilot.se.",
+        server:"HostIQ → 31.131.26.121:21098",
+        children:[
+          { id:"ew-static", name:"Static HTML/CSS/JS", type:"file", group:"products", desc:"~/Мои проекты/edwardson/. Деплой по SFTP." }
+        ]
+      }
+    ]
+  },
+  {
+    id:"content", name:"Content & Social", type:"group", group:"content",
+    desc:"Автоматизация контента, публикаций и мониторинга",
+    children:[
+      {
+        id:"carousel", name:"Carousel Generator", type:"project", group:"content",
+        desc:"Ежедневные образовательные карусели для Instagram/TikTok. launchd 9:00.",
+        server:"Mac (local) → ~/claude-workspace/carousel-generator/",
+        children:[
+          { id:"car-queue", name:"carousel_queue.json", type:"file", group:"content", desc:"Очередь тем: pending → in_review → published / error." },
+          { id:"car-pipe", name:"Пайплайн", type:"module", group:"content", desc:"От темы до публикации",
+            children:[
+              { id:"car-bld", name:"carousel_builder.py", type:"step", group:"content", desc:"Оркестратор. Берёт pending тему из queue." },
+              { id:"car-claude2", name:"Claude API → data.json", type:"step", group:"content", desc:"Генерирует текст и структуру 6 слайдов." },
+              { id:"car-pup", name:"generate.js (Puppeteer)", type:"step", group:"content", desc:"HTML → 6 PNG слайдов. Timeout 600с (Mac после сна)." },
+              { id:"car-appr", name:"TG Approval", type:"step", group:"content", desc:"Фото + кнопки Опубликовать / Пропустить. Ждёт ответа пользователя." },
+              { id:"car-pub", name:"Publish → CryptoPilot Channel", type:"step", group:"content", desc:"После апрува — пост в канал -1003544721929." }
+            ]
+          },
+          { id:"car-launchd", name:"launchd 9:00 daily", type:"config", group:"content", desc:"com.artur.carousel.plist. run_carousel.sh с multi-source fallback для ANTHROPIC_API_KEY + sleep 15с прогрев." }
+        ]
+      },
+      {
+        id:"yt-watcher", name:"YouTube Watcher", type:"project", group:"content",
+        desc:"Мониторит YouTube канал. При новом видео — TG пост.",
+        server:"hlbot-server → /home/bot/youtube_watcher/",
+        children:[
+          { id:"yt-rss", name:"RSS Feed Monitor", type:"process", group:"content", desc:"Проверяет YouTube RSS канала. Отслеживает новые видео." },
+          { id:"yt-gen", name:"Post Generator (Claude)", type:"process", group:"content", desc:"Новое видео → Claude → готовый TG пост → публикация в канал." }
+        ]
+      },
+      {
+        id:"tg-intel", name:"TG Intelligence", type:"project", group:"content",
+        desc:"Классификация сигналов из TG каналов. Источник данных для контента.",
+        server:"Mac (local) → scripts/tg_intelligence_runner.py",
+        children:[
+          { id:"tgi-col", name:"Сбор из каналов", type:"process", group:"content", desc:"Читает сообщения из мониторируемых TG каналов." },
+          { id:"tgi-cls", name:"Классификация (Claude)", type:"process", group:"content", desc:"IMPORTANT / MEDIUM / NOISE. Score для каждого сигнала. Фильтр пустышек." },
+          { id:"tgi-dig", name:"TG Digest Builder", type:"process", group:"content", desc:"Группировка по symbol/topic. Один push = один мини-доклад." },
+          { id:"tgi-json", name:"tg_intelligence.json", type:"file", group:"content", desc:"memory/dynamic/ — результаты. Источник для /build_content." }
+        ]
+      },
+      {
+        id:"twitter-mon", name:"Twitter Monitor", type:"project", group:"content",
+        desc:"Мониторинг Twitter whitelist аккаунтов. Усилитель TG сигналов.",
+        server:"hlbot-server → /home/bot/twitter/ (30с timer)",
+        children:[
+          { id:"tw-fetch", name:"twitter_ingestor.py", type:"process", group:"content", desc:"Fetch → classify → twitter_intelligence.json." },
+          { id:"tw-use", name:"Cross-source consensus", type:"process", group:"content", desc:"TG elite/strong + Twitter strong = confidence ↑. Macro sentiment, on-chain аналитика." }
+        ]
+      },
+      {
+        id:"news-digest", name:"News Digest", type:"project", group:"content",
+        desc:"Дайджест новостей из TG каналов на сервере.",
+        server:"hlbot-server → /home/bot/news_digest/",
+        children:[
+          { id:"nd-col", name:"Сбор новостей", type:"process", group:"content", desc:"Агрегирует сообщения из новостных TG каналов." },
+          { id:"nd-flt", name:"Фильтрация IMPORTANT/NOISE", type:"process", group:"content", desc:"Отсеивает кликбейт и шум." },
+          { id:"nd-push", name:"Push дайджест", type:"process", group:"content", desc:"Один компактный отчёт. Молчать если ничего важного." }
+        ]
+      },
+      {
+        id:"content-sug", name:"Content Suggester", type:"project", group:"content",
+        desc:"Ежедневные идеи для постов. launchd 11:00.",
+        server:"Mac (local) → scripts/content_suggester.py",
+        children:[
+          { id:"cs-run", name:"content_suggester.py", type:"process", group:"content", desc:"Читает content_queue.json → предлагает лучшие темы." },
+          { id:"cs-rules", name:"Правила предложений", type:"config", group:"content", desc:"Score ≥ 45, данные < 36h, cooldown 20h, макс 1 suggestion в день." }
+        ]
+      }
+    ]
+  },
+  {
+    id:"community", name:"Community", type:"group", group:"community",
+    desc:"Управление TG сообществом CryptoPilot",
+    children:[
+      {
+        id:"moderation", name:"Moderation Bot", type:"project", group:"community",
+        desc:"Шериф TG группы CryptoPilot. Работает 24/7 без участия человека.",
+        server:"hlbot-server → /home/bot/moderation_bot/ → moderation.service",
+        children:[
+          { id:"mod-cap", name:"Captcha (join.py)", type:"process", group:"community", desc:"Новый участник → капча. resume_pending_captchas при старте бота." },
+          { id:"mod-admin", name:"ban / mute / unmute (admin.py)", type:"process", group:"community", desc:"Команды для администраторов группы." },
+          { id:"mod-warn", name:"warn / trust / untrust", type:"process", group:"community", desc:"Предупреждения. Trusted users проходят без капчи." },
+          { id:"mod-msg", name:"messages.py — Фильтр", type:"process", group:"community", desc:"Фильтрация нежелательных сообщений." },
+          { id:"mod-rules2", name:"/rules", type:"process", group:"community", desc:"Показывает правила группы." }
+        ]
+      },
+      {
+        id:"support", name:"Support Agent", type:"project", group:"community",
+        desc:"Auto-FAQ бот в TG группе. Отвечает на частые вопросы автоматически.",
+        server:"hlbot-server → /home/bot/support_agent/ → support-agent.service",
+        children:[
+          { id:"sup-faq", name:"Auto-FAQ Engine", type:"process", group:"community", desc:"Определяет тип вопроса → отвечает без участия человека." },
+          { id:"sup-svc", name:"support-agent.service", type:"service", group:"community", desc:"systemd на hlbot-server. 72h+ аптайм." }
+        ]
+      }
+    ]
+  },
+  {
+    id:"brain", name:"Brain (Claude AI)", type:"group", group:"brain",
+    desc:"Центральный оркестратор — Claude Code + Telegram MCP",
+    children:[
+      {
+        id:"assistant", name:"Assistant Bot", type:"project", group:"brain",
+        desc:"@Cryptopilot_assistant_bot — единый мозг экосистемы. Claude Code подключён к Telegram через MCP plugin. Работает на Mac.",
+        server:"Mac (local) + Claude API + Telegram MCP",
+        children:[
+          { id:"ast-launchd", name:"launchd Расписание", type:"module", group:"brain", desc:"Автоматические задачи по расписанию",
+            children:[
+              { id:"ast-car-s", name:"com.artur.carousel — 9:00", type:"process", group:"brain", desc:"Запуск carousel_builder.py + апрув публикации в канал." },
+              { id:"ast-sug-s", name:"com.artur.contentsuggester — 11:00", type:"process", group:"brain", desc:"Идеи для постов из content_queue.json." },
+              { id:"ast-focus-s", name:"com.artur.focusreport — утро", type:"process", group:"brain", desc:"Дайджест: рынок + почта + задачи + TG сигналы." }
+            ]
+          },
+          { id:"ast-cmds", name:"Slash Commands", type:"module", group:"brain", desc:"Команды через Telegram кнопки и чат",
+            children:[
+              { id:"ast-focus2", name:"/focus", type:"command", group:"brain", desc:"Рынок + почта + задачи + TG intel — всё в одном." },
+              { id:"ast-market2", name:"/market", type:"command", group:"brain", desc:"BTC/ETH текущий рынок. Сетапы из active_setups.json." },
+              { id:"ast-build2", name:"/build_content", type:"command", group:"brain", desc:"Посты из TG intel + Twitter. Consensus → 1 сильный пост. Иначе 3–5 тезисов." },
+              { id:"ast-switch2", name:"/switch_*", type:"command", group:"brain", desc:"Переключение контекста проекта. Читает brain файл и работает в нём." },
+              { id:"ast-mail2", name:"/mail", type:"command", group:"brain", desc:"IMAP → P1/P2 письма → черновики ответов." },
+              { id:"ast-car-cmd", name:"/carousel", type:"command", group:"brain", desc:"Статус очереди + ручной запуск." }
+            ]
+          },
+          { id:"ast-auto", name:"Автономные процессы", type:"module", group:"brain", desc:"Что ассистент делает без команды",
+            children:[
+              { id:"ast-tgi", name:"TG Intelligence", type:"process", group:"brain", desc:"Классифицирует сигналы → источник для /build_content и /focus." },
+              { id:"ast-mw", name:"Market Watcher", type:"process", group:"brain", desc:"Мониторит BTC и рыночные аномалии. Алерты только при важных событиях." },
+              { id:"ast-pm2", name:"Project Management", type:"process", group:"brain", desc:"Деплой, дебаг, задачи по всем проектам через SSH и файловую систему." },
+              { id:"ast-email2", name:"Email Pipeline", type:"process", group:"brain", desc:"IMAP → приоритизация P1–P4 → черновики ответов." }
+            ]
+          },
+          { id:"ast-brains", name:"Brain Files (9 проектов)", type:"module", group:"brain", desc:"Техническая архитектура каждого проекта",
+            children:[
+              { id:"ast-b1", name:"hlbot.md", type:"file", group:"brain", desc:"HL Bot: 3 loops, 5 features, i18n правила, deploy." },
+              { id:"ast-b2", name:"screener.md", type:"file", group:"brain", desc:"Screener: 4 типа сигналов, config, cooldowns." },
+              { id:"ast-b3", name:"pump_hunter.md", type:"file", group:"brain", desc:"Pump Hunter: 9 tasks, SME/REVERSAL/DEATH_OF_PUMP." },
+              { id:"ast-b4", name:"docpilot.md", type:"file", group:"brain", desc:"DocPilot: SPA, FastAPI, decision_engine, deploy." },
+              { id:"ast-b5", name:"cryfin.md", type:"file", group:"brain", desc:"Cryfin.io: Next.js, LI.FI, gamification." },
+              { id:"ast-b6", name:"carousel.md", type:"file", group:"brain", desc:"Carousel: queue, pipeline, Puppeteer, launchd." },
+              { id:"ast-b7", name:"moderation.md", type:"file", group:"brain", desc:"Moderation: captcha, ban/mute/warn/trust." },
+              { id:"ast-b8", name:"assistant_bot.md", type:"file", group:"brain", desc:"Этот бот: расписания, команды, серверные процессы." },
+              { id:"ast-b9", name:"cryptopilot_site.md", type:"file", group:"brain", desc:"CryptoPilot.se + Edwardson: HostIQ SSH, пути." }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  ]
+};
+
+// ═══════════════ CONFIG ═══════════════
+const C = {
+  root:      { bg:"#13133a", str:"#7070ff" },
+  trading:   { bg:"#021408", str:"#00ff88" },
+  products:  { bg:"#011522", str:"#00aaff" },
+  content:   { bg:"#130a22", str:"#aa44ff" },
+  community: { bg:"#1a0d03", str:"#ff8844" },
+  brain:     { bg:"#181200", str:"#ffd700" }
+};
+const TYPE_NAMES = {
+  root:"ecosystem", group:"group", project:"project", module:"module",
+  process:"process", feature:"feature", algo:"algorithm", file:"file",
+  config:"config", service:"service", step:"step", output:"output", command:"command"
+};
+const NW = 162, NH = 40;
+
+function col(d) {
+  if (d.data.id === "root") return C.root;
+  return C[d.data.group] || C.root;
+}
+
+// ═══════════════ D3 INIT ═══════════════
+const svg = d3.select("#chart");
+const gMain = svg.append("g").attr("class","main-g");
+
+const zoomBeh = d3.zoom().scaleExtent([0.05,3]).on("zoom", e => gMain.attr("transform", e.transform));
+svg.call(zoomBeh);
+
+// Grid
+const defs = svg.append("defs");
+const pat = defs.append("pattern").attr("id","grid").attr("width",50).attr("height",50).attr("patternUnits","userSpaceOnUse");
+pat.append("path").attr("d","M50 0L0 0 0 50").attr("fill","none").attr("stroke","rgba(255,255,255,0.025)").attr("stroke-width","1");
+svg.insert("rect","g").attr("width","200%").attr("height","200%").attr("x","-50%").attr("y","-50%").attr("fill","url(#grid)");
+
+// ═══════════════ TREE ═══════════════
+let root, selNode = null;
+
+function init() {
+  root = d3.hierarchy(RAW);
+  // Collapse depth >= 3
+  root.each(d => {
+    if (d.depth >= 3 && d.children) { d._ch = d.children; d.children = null; }
+  });
+  render(root);
+  setTimeout(fitView, 80);
+}
+
+function treeLayout() {
+  return d3.tree().nodeSize([46, 210]);
+}
+
+function render(src) {
+  treeLayout()(root);
+
+  const nodes = root.descendants();
+  const links = root.links();
+
+  // ─── links ───
+  const lkSel = gMain.selectAll(".link").data(links, d => d.target.data.id);
+
+  lkSel.enter().append("path")
+    .attr("class","link")
+    .attr("d", d => bez(src, src))
+    .attr("stroke", d => col(d.target).str)
+    .style("opacity",0)
+  .merge(lkSel)
+    .transition().duration(380)
+    .attr("d", d => bez(d.source, d.target))
+    .style("opacity", 0.2);
+
+  lkSel.exit().transition().duration(280).attr("d", d => bez(src,src)).style("opacity",0).remove();
+
+  // ─── nodes ───
+  const ndSel = gMain.selectAll(".node").data(nodes, d => d.data.id);
+
+  const ndEnter = ndSel.enter().append("g")
+    .attr("class","node")
+    .attr("transform", () => `translate(${src._px||src.x},${src._py||src.y})`)
+    .style("opacity",0)
+    .on("click", (ev, d) => { ev.stopPropagation(); onClick(d); })
+    .on("dblclick", (ev, d) => { ev.stopPropagation(); toggle(d); })
+    .on("touchstart", (ev, d) => { ev.stopPropagation(); onTouch(ev,d); }, {passive:true})
+    .on("mouseover", (ev,d) => showTip(ev,d))
+    .on("mousemove", moveTip)
+    .on("mouseout", hideTip);
+
+  ndEnter.append("rect")
+    .attr("x",-NW/2).attr("y",-NH/2)
+    .attr("width",NW).attr("height",NH)
+    .attr("rx",7).attr("ry",7)
+    .attr("fill", d => col(d).bg)
+    .attr("stroke", d => col(d).str);
+
+  // main label
+  ndEnter.append("text").attr("class","node-label")
+    .attr("text-anchor","middle")
+    .attr("dy", d => d.data.type==="root" ? "0.35em" : "-0.05em")
+    .attr("fill", d => col(d).str)
+    .text(d => clip(d.data.name, 21));
+
+  // sub label
+  ndEnter.filter(d => d.data.type !== "root")
+    .append("text").attr("class","node-sub")
+    .attr("text-anchor","middle").attr("dy","1.15em")
+    .text(d => TYPE_NAMES[d.data.type] || d.data.type);
+
+  // expand dot
+  ndEnter.filter(d => d._ch)
+    .append("circle").attr("class","exp-circle")
+    .attr("cx", NW/2-9).attr("cy",0).attr("r",7);
+  ndEnter.filter(d => d._ch)
+    .append("text").attr("class","exp-text")
+    .attr("x", NW/2-9).attr("y",0)
+    .attr("text-anchor","middle").attr("dy","0.35em")
+    .text("+");
+
+  const ndMerge = ndEnter.merge(ndSel);
+  ndMerge.transition().duration(380)
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .style("opacity",1);
+
+  // Update expand indicators on existing
+  ndMerge.select(".exp-circle").attr("visibility", d => d._ch ? "visible":"hidden");
+  ndMerge.select(".exp-text").text(d => d._ch ? "+" : "").attr("visibility", d => d._ch ? "visible":"hidden");
+
+  ndSel.exit().transition().duration(280)
+    .attr("transform", `translate(${src.x},${src.y})`).style("opacity",0).remove();
+
+  // save pos
+  nodes.forEach(d => { d._px = d.x; d._py = d.y; });
+
+  if (selNode) lightPath(selNode);
+}
+
+function bez(s, t) {
+  const my = (s.y + t.y) / 2;
+  return `M${s.x},${s.y} C${s.x},${my} ${t.x},${my} ${t.x},${t.y}`;
+}
+function clip(s, n) { return s.length > n ? s.slice(0,n-1)+"…" : s; }
+
+// ═══════════════ INTERACTION ═══════════════
+let touchTm = null;
+function onTouch(ev, d) {
+  if (touchTm) { clearTimeout(touchTm); touchTm = null; toggle(d); }
+  else { touchTm = setTimeout(() => { touchTm = null; onClick(d); }, 250); }
+}
+function onClick(d) {
+  hideTip();
+  if (selNode === d) { selNode = null; clearLight(); setPath(""); }
+  else { selNode = d; lightPath(d); setPath(d); }
+}
+function toggle(d) {
+  if (d.children) { d._ch = d.children; d.children = null; }
+  else if (d._ch) { d.children = d._ch; d._ch = null; }
+  render(d);
+}
+function lightPath(d) {
+  const anc = new Set(), desc = new Set();
+  let c = d; while(c) { anc.add(c.data.id); c = c.parent; }
+  d.each(n => desc.add(n.data.id));
+  const all = new Set([...anc, ...desc]);
+
+  gMain.selectAll(".node")
+    .classed("selected", n => n===d)
+    .classed("dimmed", n => !all.has(n.data.id));
+  gMain.selectAll(".link")
+    .classed("lit", l => anc.has(l.source.data.id) && anc.has(l.target.data.id))
+    .style("opacity", l => (anc.has(l.source.data.id) && anc.has(l.target.data.id)) ? 0.9 : 0.04);
+}
+function clearLight() {
+  gMain.selectAll(".node").classed("selected",false).classed("dimmed",false);
+  gMain.selectAll(".link").classed("lit",false).style("opacity",0.2);
+}
+function setPath(d) {
+  const bar = document.getElementById("pathbar");
+  if (!d) { bar.classList.remove("vis"); return; }
+  const p = []; let c = d; while(c) { p.unshift(c.data.name); c = c.parent; }
+  bar.textContent = p.join(" › ");
+  bar.classList.add("vis");
+}
+svg.on("click", () => { selNode = null; clearLight(); setPath(""); });
+
+// ═══════════════ TOOLTIP ═══════════════
+const tt = document.getElementById("tt");
+function showTip(ev, d) {
+  const c = col(d);
+  document.getElementById("tt-name").textContent = d.data.name;
+  const b = document.getElementById("tt-badge");
+  b.textContent = TYPE_NAMES[d.data.type] || d.data.type;
+  b.style.cssText = `background:${c.str}18;color:${c.str};border:1px solid ${c.str}40`;
+  document.getElementById("tt-desc").textContent = d.data.desc || "";
+  document.getElementById("tt-server").textContent = d.data.server ? "⚙ "+d.data.server : "";
+  tt.style.display = "block";
+  moveTip(ev);
+}
+function moveTip(ev) {
+  const x = ev.clientX||0, y = ev.clientY||0;
+  const tw = tt.offsetWidth, th = tt.offsetHeight;
+  let lx = x+14, ly = y+14;
+  if (lx+tw > window.innerWidth-8) lx = x-tw-14;
+  if (ly+th > window.innerHeight-8) ly = y-th-14;
+  tt.style.left = lx+"px"; tt.style.top = ly+"px";
+}
+function hideTip() { tt.style.display="none"; }
+
+// ═══════════════ CONTROLS ═══════════════
+function fitView() {
+  const w = window.innerWidth, h = window.innerHeight - 48;
+  // Find bounds
+  const nodes = root.descendants();
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  nodes.forEach(d => { if(d.x<x0)x0=d.x; if(d.x>x1)x1=d.x; if(d.y<y0)y0=d.y; if(d.y>y1)y1=d.y; });
+  const pw = x1-x0+NW+40, ph = y1-y0+NH+40;
+  const sc = Math.min(w/pw, h/ph, 0.65);
+  const tx = w/2 - (x0+x1)/2*sc;
+  const ty = 60 - y0*sc;
+  svg.call(zoomBeh.transform, d3.zoomIdentity.translate(tx,ty).scale(sc));
+}
+function resetView() { fitView(); }
+function expandAll() {
+  root.each(d => { if(d._ch) { d.children=d._ch; d._ch=null; } });
+  render(root); setTimeout(fitView,420);
+}
+function collapseAll() {
+  root.each(d => { if(d.depth>=2&&d.children) { d._ch=d.children; d.children=null; } });
+  render(root);
+}
+
+// ═══════════════ START ═══════════════
+init();
+window.addEventListener("resize", fitView);
+</script>
+</body>
+</html>
