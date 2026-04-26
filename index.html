@@ -485,7 +485,8 @@ function init() {
 }
 
 function treeLayout() {
-  return d3.tree().nodeSize([46, 210]);
+  // Left-to-right: nodeSize[dy=vertical gap between siblings, dx=horizontal per level]
+  return d3.tree().nodeSize([NH + 16, NW + 70]);
 }
 
 function render(src) {
@@ -499,7 +500,7 @@ function render(src) {
 
   lkSel.enter().append("path")
     .attr("class","link")
-    .attr("d", d => bez(src, src))
+    .attr("d", () => bez(src, src))
     .attr("stroke", d => col(d.target).str)
     .style("opacity",0)
   .merge(lkSel)
@@ -507,14 +508,14 @@ function render(src) {
     .attr("d", d => bez(d.source, d.target))
     .style("opacity", 0.2);
 
-  lkSel.exit().transition().duration(280).attr("d", d => bez(src,src)).style("opacity",0).remove();
+  lkSel.exit().transition().duration(280).attr("d", () => bez(src,src)).style("opacity",0).remove();
 
   // ─── nodes ───
   const ndSel = gMain.selectAll(".node").data(nodes, d => d.data.id);
 
   const ndEnter = ndSel.enter().append("g")
     .attr("class","node")
-    .attr("transform", () => `translate(${src._px||src.x},${src._py||src.y})`)
+    .attr("transform", () => `translate(${src._py||src.y},${src._px||src.x})`)
     .style("opacity",0)
     .on("click", (ev, d) => { ev.stopPropagation(); onClick(d); })
     .on("dblclick", (ev, d) => { ev.stopPropagation(); toggle(d); })
@@ -543,19 +544,19 @@ function render(src) {
     .attr("text-anchor","middle").attr("dy","1.15em")
     .text(d => TYPE_NAMES[d.data.type] || d.data.type);
 
-  // expand dot
+  // expand dot — right edge in LR layout
   ndEnter.filter(d => d._ch)
     .append("circle").attr("class","exp-circle")
-    .attr("cx", NW/2-9).attr("cy",0).attr("r",7);
+    .attr("cx", NW/2+9).attr("cy",0).attr("r",8);
   ndEnter.filter(d => d._ch)
     .append("text").attr("class","exp-text")
-    .attr("x", NW/2-9).attr("y",0)
+    .attr("x", NW/2+9).attr("y",0)
     .attr("text-anchor","middle").attr("dy","0.35em")
     .text("+");
 
   const ndMerge = ndEnter.merge(ndSel);
   ndMerge.transition().duration(380)
-    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .attr("transform", d => `translate(${d.y},${d.x})`)
     .style("opacity",1);
 
   // Update expand indicators on existing
@@ -563,7 +564,7 @@ function render(src) {
   ndMerge.select(".exp-text").text(d => d._ch ? "+" : "").attr("visibility", d => d._ch ? "visible":"hidden");
 
   ndSel.exit().transition().duration(280)
-    .attr("transform", `translate(${src.x},${src.y})`).style("opacity",0).remove();
+    .attr("transform", `translate(${src.y},${src.x})`).style("opacity",0).remove();
 
   // save pos
   nodes.forEach(d => { d._px = d.x; d._py = d.y; });
@@ -572,8 +573,9 @@ function render(src) {
 }
 
 function bez(s, t) {
-  const my = (s.y + t.y) / 2;
-  return `M${s.x},${s.y} C${s.x},${my} ${t.x},${my} ${t.x},${t.y}`;
+  // Left-to-right: x=depth (horizontal), y=position (vertical)
+  const mx = (s.y + t.y) / 2;
+  return `M${s.y},${s.x} C${mx},${s.x} ${mx},${t.x} ${t.y},${t.x}`;
 }
 function clip(s, n) { return s.length > n ? s.slice(0,n-1)+"…" : s; }
 
@@ -645,15 +647,19 @@ function hideTip() { tt.style.display="none"; }
 // ═══════════════ CONTROLS ═══════════════
 function fitView() {
   const w = window.innerWidth, h = window.innerHeight - 48;
-  // Find bounds
   const nodes = root.descendants();
-  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
-  nodes.forEach(d => { if(d.x<x0)x0=d.x; if(d.x>x1)x1=d.x; if(d.y<y0)y0=d.y; if(d.y>y1)y1=d.y; });
-  const pw = x1-x0+NW+40, ph = y1-y0+NH+40;
-  const sc = Math.min(w/pw, h/ph, 0.65);
-  const tx = w/2 - (x0+x1)/2*sc;
-  const ty = 60 - y0*sc;
-  svg.call(zoomBeh.transform, d3.zoomIdentity.translate(tx,ty).scale(sc));
+  // In LR layout: render pos is translate(d.y, d.x)
+  let vx0=Infinity,vx1=-Infinity,vy0=Infinity,vy1=-Infinity;
+  nodes.forEach(d => {
+    const vx = d.y, vy = d.x;
+    if(vx<vx0)vx0=vx; if(vx>vx1)vx1=vx;
+    if(vy<vy0)vy0=vy; if(vy>vy1)vy1=vy;
+  });
+  const pw = vx1-vx0+NW+40, ph = vy1-vy0+NH+40;
+  const sc = Math.min(w/pw, (h-60)/ph, 0.9);
+  const tx = 20 - vx0*sc;
+  const ty = h/2 - (vy0+vy1)/2*sc;
+  svg.call(zoomBeh.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
 }
 function resetView() { fitView(); }
 function expandAll() {
