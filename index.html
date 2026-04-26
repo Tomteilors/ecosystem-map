@@ -392,42 +392,50 @@ const RAW = {
         desc:"@Cryptopilot_assistant_bot — единый мозг экосистемы. Claude Code подключён к Telegram через MCP plugin. Работает на Mac.",
         server:"Mac (local) + Claude API + Telegram MCP",
         children:[
-          { id:"ast-launchd", name:"launchd Расписание", type:"module", group:"brain", desc:"Автоматические задачи по расписанию",
+          { id:"ast-col1", name:"Управление", type:"module", group:"brain", desc:"Расписания и ручные команды",
             children:[
-              { id:"ast-car-s", name:"com.artur.carousel — 9:00", type:"process", group:"brain", desc:"Запуск carousel_builder.py + апрув публикации в канал." },
-              { id:"ast-sug-s", name:"com.artur.contentsuggester — 11:00", type:"process", group:"brain", desc:"Идеи для постов из content_queue.json." },
-              { id:"ast-focus-s", name:"com.artur.focusreport — утро", type:"process", group:"brain", desc:"Дайджест: рынок + почта + задачи + TG сигналы." }
+              { id:"ast-launchd", name:"launchd Расписание", type:"module", group:"brain", desc:"Автоматические задачи по расписанию на Mac",
+                children:[
+                  { id:"ast-car-s", name:"carousel — 9:00 daily", type:"process", group:"brain", desc:"carousel_builder.py → Claude → Puppeteer → TG апрув → канал." },
+                  { id:"ast-sug-s", name:"content suggester — 11:00", type:"process", group:"brain", desc:"Идеи для постов из content_queue.json." },
+                  { id:"ast-focus-s", name:"focus report — утро", type:"process", group:"brain", desc:"Дайджест: рынок + почта + задачи + TG сигналы." }
+                ]
+              },
+              { id:"ast-cmds", name:"Slash Commands", type:"module", group:"brain", desc:"Команды через Telegram кнопки и чат",
+                children:[
+                  { id:"ast-focus2", name:"/focus", type:"command", group:"brain", desc:"Рынок + почта + задачи + TG intel." },
+                  { id:"ast-market2", name:"/market", type:"command", group:"brain", desc:"BTC/ETH текущий рынок + сетапы." },
+                  { id:"ast-build2", name:"/build_content", type:"command", group:"brain", desc:"Посты из TG intel + Twitter. Consensus → 1 сильный пост." },
+                  { id:"ast-switch2", name:"/switch_*", type:"command", group:"brain", desc:"Переключение контекста проекта. Читает brain файл." },
+                  { id:"ast-mail2", name:"/mail", type:"command", group:"brain", desc:"IMAP → P1/P2 письма → черновики ответов." },
+                  { id:"ast-car-cmd", name:"/carousel", type:"command", group:"brain", desc:"Статус очереди + ручной запуск." }
+                ]
+              }
             ]
           },
-          { id:"ast-cmds", name:"Slash Commands", type:"module", group:"brain", desc:"Команды через Telegram кнопки и чат",
+          { id:"ast-col2", name:"Интеллект", type:"module", group:"brain", desc:"Автономные процессы и база знаний",
             children:[
-              { id:"ast-focus2", name:"/focus", type:"command", group:"brain", desc:"Рынок + почта + задачи + TG intel — всё в одном." },
-              { id:"ast-market2", name:"/market", type:"command", group:"brain", desc:"BTC/ETH текущий рынок. Сетапы из active_setups.json." },
-              { id:"ast-build2", name:"/build_content", type:"command", group:"brain", desc:"Посты из TG intel + Twitter. Consensus → 1 сильный пост. Иначе 3–5 тезисов." },
-              { id:"ast-switch2", name:"/switch_*", type:"command", group:"brain", desc:"Переключение контекста проекта. Читает brain файл и работает в нём." },
-              { id:"ast-mail2", name:"/mail", type:"command", group:"brain", desc:"IMAP → P1/P2 письма → черновики ответов." },
-              { id:"ast-car-cmd", name:"/carousel", type:"command", group:"brain", desc:"Статус очереди + ручной запуск." }
-            ]
-          },
-          { id:"ast-auto", name:"Автономные процессы", type:"module", group:"brain", desc:"Что ассистент делает без команды",
-            children:[
-              { id:"ast-tgi", name:"TG Intelligence", type:"process", group:"brain", desc:"Классифицирует сигналы → источник для /build_content и /focus." },
-              { id:"ast-mw", name:"Market Watcher", type:"process", group:"brain", desc:"Мониторит BTC и рыночные аномалии. Алерты только при важных событиях." },
-              { id:"ast-pm2", name:"Project Management", type:"process", group:"brain", desc:"Деплой, дебаг, задачи по всем проектам через SSH и файловую систему." },
-              { id:"ast-email2", name:"Email Pipeline", type:"process", group:"brain", desc:"IMAP → приоритизация P1–P4 → черновики ответов." }
-            ]
-          },
-          { id:"ast-brains", name:"Brain Files (9 проектов)", type:"module", group:"brain", desc:"Техническая архитектура каждого проекта",
-            children:[
-              { id:"ast-b1", name:"hlbot.md", type:"file", group:"brain", desc:"HL Bot: 3 loops, 5 features, i18n правила, deploy." },
-              { id:"ast-b2", name:"screener.md", type:"file", group:"brain", desc:"Screener: 4 типа сигналов, config, cooldowns." },
-              { id:"ast-b3", name:"pump_hunter.md", type:"file", group:"brain", desc:"Pump Hunter: 9 tasks, SME/REVERSAL/DEATH_OF_PUMP." },
-              { id:"ast-b4", name:"docpilot.md", type:"file", group:"brain", desc:"DocPilot: SPA, FastAPI, decision_engine, deploy." },
-              { id:"ast-b5", name:"cryfin.md", type:"file", group:"brain", desc:"Cryfin.io: Next.js, LI.FI, gamification." },
-              { id:"ast-b6", name:"carousel.md", type:"file", group:"brain", desc:"Carousel: queue, pipeline, Puppeteer, launchd." },
-              { id:"ast-b7", name:"moderation.md", type:"file", group:"brain", desc:"Moderation: captcha, ban/mute/warn/trust." },
-              { id:"ast-b8", name:"assistant_bot.md", type:"file", group:"brain", desc:"Этот бот: расписания, команды, серверные процессы." },
-              { id:"ast-b9", name:"cryptopilot_site.md", type:"file", group:"brain", desc:"CryptoPilot.se + Edwardson: HostIQ SSH, пути." }
+              { id:"ast-auto", name:"Автономные процессы", type:"module", group:"brain", desc:"Что ассистент делает без команды",
+                children:[
+                  { id:"ast-tgi", name:"TG Intelligence", type:"process", group:"brain", desc:"Классифицирует сигналы → IMPORTANT/MEDIUM/NOISE → контент." },
+                  { id:"ast-mw", name:"Market Watcher", type:"process", group:"brain", desc:"BTC аномалии. Алерты только при важных событиях." },
+                  { id:"ast-pm2", name:"Project Management", type:"process", group:"brain", desc:"Деплой, дебаг, задачи по всем проектам через SSH." },
+                  { id:"ast-email2", name:"Email Pipeline", type:"process", group:"brain", desc:"IMAP → приоритизация P1–P4 → черновики ответов." }
+                ]
+              },
+              { id:"ast-brains", name:"Brain Files (9 проектов)", type:"module", group:"brain", desc:"Техническая архитектура каждого проекта",
+                children:[
+                  { id:"ast-b1", name:"hlbot.md", type:"file", group:"brain", desc:"HL Bot: 3 loops, 5 features, i18n." },
+                  { id:"ast-b2", name:"screener.md", type:"file", group:"brain", desc:"Screener: 4 типа сигналов, cooldowns." },
+                  { id:"ast-b3", name:"pump_hunter.md", type:"file", group:"brain", desc:"Pump Hunter: 9 tasks, 4 алгоритма." },
+                  { id:"ast-b4", name:"docpilot.md", type:"file", group:"brain", desc:"DocPilot: SPA, FastAPI, decision_engine." },
+                  { id:"ast-b5", name:"cryfin.md", type:"file", group:"brain", desc:"Cryfin.io: LI.FI, gamification." },
+                  { id:"ast-b6", name:"carousel.md", type:"file", group:"brain", desc:"Carousel: queue → Claude → Puppeteer." },
+                  { id:"ast-b7", name:"moderation.md", type:"file", group:"brain", desc:"Moderation: captcha, ban/mute/warn." },
+                  { id:"ast-b8", name:"assistant_bot.md", type:"file", group:"brain", desc:"Этот бот: расписания, команды." },
+                  { id:"ast-b9", name:"cryptopilot_site.md", type:"file", group:"brain", desc:"CryptoPilot.se + Edwardson: HostIQ." }
+                ]
+              }
             ]
           }
         ]
@@ -517,9 +525,8 @@ function render(src) {
     .attr("class","node")
     .attr("transform", () => `translate(${src._py||src.y},${src._px||src.x})`)
     .style("opacity",0)
-    .on("click", (ev, d) => { ev.stopPropagation(); onClick(d); })
-    .on("dblclick", (ev, d) => { ev.stopPropagation(); toggle(d); })
-    .on("touchstart", (ev, d) => { ev.stopPropagation(); onTouch(ev,d); }, {passive:true})
+    .on("click", onClick)
+    .on("touchstart", onTouch, {passive:true})
     .on("mouseover", (ev,d) => showTip(ev,d))
     .on("mousemove", moveTip)
     .on("mouseout", hideTip);
@@ -580,12 +587,31 @@ function bez(s, t) {
 function clip(s, n) { return s.length > n ? s.slice(0,n-1)+"…" : s; }
 
 // ═══════════════ INTERACTION ═══════════════
-let touchTm = null;
+let touchTm = null, lastTouch = 0, touchCount = 0;
+
 function onTouch(ev, d) {
-  if (touchTm) { clearTimeout(touchTm); touchTm = null; toggle(d); }
-  else { touchTm = setTimeout(() => { touchTm = null; onClick(d); }, 250); }
+  ev.stopPropagation();
+  const now = Date.now();
+  const gap = now - lastTouch;
+  lastTouch = now;
+  hideTip();
+  if (gap < 350) {
+    // double-tap → toggle expand
+    clearTimeout(touchTm); touchTm = null;
+    toggle(d);
+  } else {
+    // single tap (wait to see if second tap comes)
+    clearTimeout(touchTm);
+    touchTm = setTimeout(() => { touchTm = null; selectNode(d); }, 300);
+  }
 }
-function onClick(d) {
+function onClick(ev, d) {
+  ev.stopPropagation();
+  // Ignore clicks that are ghost-fired after touch
+  if (Date.now() - lastTouch < 500) return;
+  selectNode(d);
+}
+function selectNode(d) {
   hideTip();
   if (selNode === d) { selNode = null; clearLight(); setPath(""); }
   else { selNode = d; lightPath(d); setPath(d); }
@@ -596,13 +622,13 @@ function toggle(d) {
   render(d);
 }
 function lightPath(d) {
-  const anc = new Set(), desc = new Set();
+  const anc = new Set();
   let c = d; while(c) { anc.add(c.data.id); c = c.parent; }
-  d.each(n => desc.add(n.data.id));
-  const all = new Set([...anc, ...desc]);
+  const all = new Set([...anc]);
+  d.each(n => all.add(n.data.id));
 
   gMain.selectAll(".node")
-    .classed("selected", n => n===d)
+    .classed("selected", n => n === d)
     .classed("dimmed", n => !all.has(n.data.id));
   gMain.selectAll(".link")
     .classed("lit", l => anc.has(l.source.data.id) && anc.has(l.target.data.id))
@@ -619,7 +645,10 @@ function setPath(d) {
   bar.textContent = p.join(" › ");
   bar.classList.add("vis");
 }
-svg.on("click", () => { selNode = null; clearLight(); setPath(""); });
+svg.on("click", (ev) => {
+  if (Date.now() - lastTouch < 500) return;
+  selNode = null; clearLight(); setPath("");
+});
 
 // ═══════════════ TOOLTIP ═══════════════
 const tt = document.getElementById("tt");
